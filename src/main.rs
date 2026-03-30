@@ -511,6 +511,17 @@ fn dump_controls(args: &[String]) {
 
     let document = doc.document();
 
+    // border_fill 상세 덤프 (필터 없을 때 전체, 필터 있을 때 관련 bf만)
+    if filter_section.is_none() && filter_para.is_none() {
+        for (i, bf) in document.doc_info.border_fills.iter().enumerate() {
+            let fill = &bf.fill;
+            let solid_info = fill.solid.as_ref().map(|s| format!("bg=#{:06X} pat_type={} pat_color=#{:06X}", s.background_color, s.pattern_type, s.pattern_color)).unwrap_or_default();
+            let grad_info = if fill.gradient.is_some() { " gradient" } else { "" };
+            let img_info = fill.image.as_ref().map(|img| format!(" image(bin_id={}, mode={:?})", img.bin_data_id, img.fill_mode)).unwrap_or_default();
+            println!("  border_fill[{}] fill_type={:?} {}{}{}", i, fill.fill_type, solid_info, grad_info, img_info);
+        }
+    }
+
     use rhwp::model::control::Control;
     use rhwp::model::shape::{ShapeObject, VertRelTo, HorzRelTo, TextWrap};
     use rhwp::model::paragraph::ColumnBreakType;
@@ -875,6 +886,12 @@ fn dump_controls(args: &[String]) {
                             table.cells.len(), table.page_break, table.raw_table_record_attr,
                             table.padding.left, table.padding.right, table.padding.top, table.padding.bottom,
                             table.cell_spacing);
+                        if !table.zones.is_empty() {
+                            for (zi, z) in table.zones.iter().enumerate() {
+                                println!("{}  zone[{}] row={}..{} col={}..{} bf={}",
+                                    prefix, zi, z.start_row, z.end_row, z.start_col, z.end_col, z.border_fill_id);
+                            }
+                        }
                         {
                             let c = &table.common;
                             println!("{}  [common] treat_as_char={}, wrap={}, vert={}({}={:.1}mm), horz={}({}={:.1}mm)",
@@ -918,6 +935,26 @@ fn dump_controls(args: &[String]) {
                                         println!("{}  p[{}] ps_id={} ctrls={} text_len={} {}",
                                             indent, pi, cp.para_shape_id, cp.controls.len(),
                                             cp.text.len(), ls_info.join(", "));
+                                    }
+                                    // 셀 내부 컨트롤 상세
+                                    for (ci, ctrl) in cp.controls.iter().enumerate() {
+                                        match ctrl {
+                                            Control::Picture(p) => {
+                                                println!("{}    ctrl[{}] 그림: bin_id={}, w={} h={} ({:.1}×{:.1}mm), tac={}, wrap={:?}, vert={:?}(off={}), horz={:?}(off={})",
+                                                    indent, ci, p.image_attr.bin_data_id,
+                                                    p.common.width, p.common.height,
+                                                    p.common.width as f64 / 7200.0 * 25.4,
+                                                    p.common.height as f64 / 7200.0 * 25.4,
+                                                    p.common.treat_as_char,
+                                                    p.common.text_wrap, p.common.vert_rel_to, p.common.vertical_offset,
+                                                    p.common.horz_rel_to, p.common.horizontal_offset);
+                                            }
+                                            Control::Shape(s) => {
+                                                println!("{}    ctrl[{}] 도형: tac={}, wrap={:?}",
+                                                    indent, ci, s.common().treat_as_char, s.common().text_wrap);
+                                            }
+                                            _ => {}
+                                        }
                                     }
                                     // 내부 표 재귀
                                     if depth < 3 {
