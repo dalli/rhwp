@@ -1904,12 +1904,11 @@ impl LayoutEngine {
                         }
                     } else {
                         // 마지막 TAC: line_end 보정 (vpos 기반)
-                        // 표 실제 하단 + line_spacing을 상한으로 clamp
+                        // 표 실제 하단을 상한으로 clamp (ls는 이후 TAC seg handling에서 추가)
                         if let Some(seg) = para.line_segs.get(seg_idx) {
-                            let ls_px = hwpunit_to_px(seg.line_spacing, self.dpi);
                             let line_end = para_y_for_table
                                 + hwpunit_to_px(seg.vertical_pos + seg.line_height, self.dpi);
-                            let clamped = line_end.min(table_y_end + ls_px);
+                            let clamped = line_end.min(table_y_end);
                             let max_correction = hwpunit_to_px(seg.line_spacing * 2 + 1000, self.dpi);
                             if clamped > y_offset && (clamped - y_offset) <= max_correction {
                                 y_offset = clamped;

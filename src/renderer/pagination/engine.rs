@@ -814,7 +814,24 @@ impl Paginator {
                         }
                     }
                 }
-                Control::Picture(_) | Control::Equation(_) => {
+                Control::Picture(pic) => {
+                    st.current_items.push(PageItem::Shape {
+                        para_index: para_idx,
+                        control_index: ctrl_idx,
+                    });
+                    // 비-TAC 그림: 본문 공간을 차지하는 배치이면 높이 추가 (Task #10)
+                    if !pic.common.treat_as_char
+                        && matches!(pic.common.text_wrap,
+                            crate::model::shape::TextWrap::Square
+                            | crate::model::shape::TextWrap::TopAndBottom)
+                    {
+                        let pic_h = crate::renderer::hwpunit_to_px(pic.common.height as i32, self.dpi);
+                        let margin_top = crate::renderer::hwpunit_to_px(pic.common.margin.top as i32, self.dpi);
+                        let margin_bottom = crate::renderer::hwpunit_to_px(pic.common.margin.bottom as i32, self.dpi);
+                        st.current_height += pic_h + margin_top + margin_bottom;
+                    }
+                }
+                Control::Equation(_) => {
                     st.current_items.push(PageItem::Shape {
                         para_index: para_idx,
                         control_index: ctrl_idx,
