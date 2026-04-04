@@ -1,177 +1,137 @@
 # Contributing to rhwp
 
-rhwp에 기여해 주셔서 감사합니다! 이 문서는 프로젝트에 참여하기 위한 가이드입니다.
+rhwp에 관심을 가져주셔서 감사합니다!
 
-## Getting Started
+"모두의 한글"은 이름 그대로 모두의 참여로 완성됩니다. 코드 기여, 버그 리포트, 문서 개선, HWP 샘플 파일 제공 — 어떤 형태든 환영합니다.
 
-### 개발 환경 설정
+## 처음 참여하시나요?
+
+### 1. 프로젝트 체험하기
+
+코드를 보기 전에 먼저 사용해보세요:
+
+- **[온라인 데모](https://edwardkim.github.io/rhwp/)** — 브라우저에서 바로 HWP 파일 열기
+- **[VS Code 확장](https://marketplace.visualstudio.com/items?itemName=edwardkim.rhwp-vscode)** — VS Code에서 HWP 미리보기
+
+### 2. 개발 환경 설정 (5분)
 
 ```bash
-# 1. 리포지토리 클론
-git clone https://github.com/pureink-studio/rhwp.git
+# 클론
+git clone https://github.com/edwardkim/rhwp.git
 cd rhwp
 
-# 2. Rust 빌드 확인
+# 빌드 + 테스트
 cargo build
 cargo test
 
-# 3. WASM 빌드 (선택)
-cp .env.docker.example .env.docker
-docker compose --env-file .env.docker run --rm wasm
-
-# 4. 웹 에디터 실행
+# 웹 에디터 실행 (선택)
 cd rhwp-studio
 npm install
-npx vite --host 0.0.0.0 --port 7700
+npx vite --port 7700
+# http://localhost:7700 에서 확인
 ```
 
-### 온보딩 가이드
+### 3. 첫 기여 찾기
 
-프로젝트의 아키텍처, 디버깅 방법, 워크플로우에 대한 상세 가이드:
-- [온보딩 가이드](mydocs/manual/onboarding_guide.md)
+- [`good first issue`](https://github.com/edwardkim/rhwp/labels/good%20first%20issue) 라벨이 붙은 이슈
+- 렌더링 불일치 제보 (한컴과 비교하여 스크린샷 첨부)
+- 문서 오타/개선
 
-## Development Workflow
+## 기여 방법
 
-### 브랜치 규칙
+### 버그 리포트
 
-| 브랜치 | 용도 |
-|--------|------|
-| `main` | 릴리즈 (안정 버전) |
-| `devel` | 개발 통합 |
-| `local/task{N}` | 타스크별 작업 |
+HWP 파일이 한컴과 다르게 렌더링되면 알려주세요:
 
-### 타스크 진행 절차
+1. [이슈 생성](https://github.com/edwardkim/rhwp/issues/new?template=bug_report.md)
+2. **한컴 스크린샷** + **rhwp 스크린샷** 비교 첨부
+3. 가능하면 HWP 파일 첨부 (개인정보 제거 후)
 
-1. **이슈 등록** — GitHub Issue 또는 `mydocs/orders/yyyymmdd.md`에 등록
-2. **브랜치 생성** — `devel`에서 `local/task{N}` 브랜치 생성
-3. **구현** — 코드 작성 + 테스트 추가
-4. **테스트 통과** — `cargo test` 전체 통과 확인
-5. **PR 생성** — `devel` 브랜치로 Pull Request
-6. **코드 리뷰** — 리뷰 후 merge
-
-### 커밋 메시지 규칙
-
-```
-{변경 요약} (Task {N})
-
-- 변경 사항 1
-- 변경 사항 2
-
-Co-Authored-By: {name} <{email}>
-```
-
-예시:
-```
-TAC 표 다음 문단 vpos 간격 과대 수정 (Task 390)
-
-- 마지막 TAC의 line_end 보정에 상한 추가: table_y_end + line_spacing
-- synam-001.hwp p8: pi=82→pi=83 간격 정상화
-```
-
-## Debugging
-
-### 디버깅 3종 도구
-
-레이아웃/간격 버그 디버깅 시 코드 수정 없이 다음 순서로 진행합니다:
+### 코드 기여
 
 ```bash
-# 1. 문단/표 식별
-rhwp export-svg sample.hwp --debug-overlay
+# 1. Fork → Clone
+git clone https://github.com/{your-id}/rhwp.git
 
-# 2. 페이지 배치 확인
-rhwp dump-pages sample.hwp -p 15
+# 2. 브랜치 생성
+git checkout -b fix/issue-123
 
-# 3. 특정 문단 상세 조사
-rhwp dump sample.hwp -s 2 -p 45
+# 3. 코드 수정 + 테스트
+cargo test
+cargo clippy -- -D warnings
+
+# 4. 커밋 + Push
+git commit -m "간결한 변경 요약 (#123)"
+git push origin fix/issue-123
+
+# 5. Pull Request 생성
 ```
 
-#### 디버그 오버레이 라벨 형식
+PR을 보내면 CI가 자동으로 빌드 + 테스트 + Clippy를 실행합니다.
 
+### HWP 샘플 파일 제공
+
+다양한 HWP 파일로 테스트할수록 렌더링 품질이 올라갑니다. 개인정보가 없는 공공 문서나 테스트용 파일을 제공해주시면 큰 도움이 됩니다.
+
+## 디버깅 가이드
+
+렌더링 버그를 조사할 때 코드 수정 없이 사용할 수 있는 3종 도구:
+
+```bash
+# 1. 문단/표 식별 (디버그 오버레이)
+cargo run --bin rhwp -- export-svg sample.hwp --debug-overlay
+
+# 2. 페이지 배치 목록
+cargo run --bin rhwp -- dump-pages sample.hwp -p 3
+
+# 3. 특정 문단 상세 (ParaShape, LINE_SEG, 표 속성)
+cargo run --bin rhwp -- dump sample.hwp -s 0 -p 45
+```
+
+디버그 오버레이는 문단/표에 라벨을 표시합니다:
 - 문단: `s{섹션}:pi={인덱스} y={좌표}`
 - 표: `s{섹션}:pi={인덱스} ci={컨트롤} {행}x{열} y={좌표}`
 
-작업지시자와 개발자가 **동일한 인덱스로 문단을 지정**할 수 있어 커뮤니케이션이 정확합니다.
+## 프로젝트 구조
 
-### HWP 단위
+```
+src/
+├── model/          ← 순수 데이터 구조 (의존성 없음)
+├── parser/         ← HWP/HWPX 파일 → 모델 변환
+├── document_core/  ← 편집 명령 + 조회 (CQRS)
+├── renderer/       ← 레이아웃, 페이지네이션, SVG/Canvas
+├── serializer/     ← 모델 → HWP 파일 저장
+└── wasm_api.rs     ← WASM 바인딩
+
+rhwp-studio/        ← 웹 에디터 (TypeScript + Vite)
+```
+
+의존성 방향: `model` ← `parser` ← `document_core` ← `renderer` ← `wasm_api`
+
+## 코드 스타일
+
+- `cargo clippy -- -D warnings` 경고 0건 (CI에서 강제)
+- `unwrap()` 최소화
+- 모든 문서는 한국어로 작성
+
+## 테스트
+
+```bash
+cargo test                       # 783+ 단위 테스트
+cargo clippy -- -D warnings     # 린트
+```
+
+PR 전에 반드시 두 명령이 통과하는지 확인해주세요.
+
+## HWP 단위 참고
 
 - 1 inch = 7,200 HWPUNIT
 - 1 mm ≈ 283.465 HWPUNIT
 
-## Code Style
+## Notice
 
-### Rust
-
-- `cargo clippy` 경고 0건 유지
-- `unwrap()` 사용 최소화 (equation parser 등 안전한 컨텍스트 제외)
-- 모듈 구조: `model/` → `parser/` → `document_core/` → `renderer/` 의존성 방향 유지
-
-### TypeScript (rhwp-studio)
-
-- Vite + TypeScript (strict mode)
-- CSS 접두어 규칙: `tb-` (도구상자), `sb-` (서식바), `md-` (메뉴), `dialog-` (대화상자)
-
-## Architecture
-
-```
-┌─────────────┐
-│   model/    │  ← 순수 데이터 구조 (외부 의존 없음)
-├─────────────┤
-│   parser/   │  ← HWP/HWPX → model 변환
-├─────────────┤
-│ document_   │  ← 편집 명령(Commands) + 조회(Queries)
-│    core/    │     CQRS 패턴
-├─────────────┤
-│  renderer/  │  ← 렌더링 엔진 (layout, pagination, SVG/Canvas)
-├─────────────┤
-│  wasm_api   │  ← WASM 바인딩 (thin wrapper)
-├─────────────┤
-│ rhwp-studio │  ← 웹 에디터 (TypeScript + Canvas)
-└─────────────┘
-```
-
-### 의존성 규칙
-
-- `model` → 외부 의존 없음
-- `parser` → `model` 참조만
-- `document_core` → `model` + `parser`(로드 시만)
-- `renderer` → `model` + `document_core`(queries)
-- `wasm_api` → 전체 (thin wrapper)
-
-## Testing
-
-### 테스트 구성
-
-| 유형 | 위치 | 수량 |
-|------|------|------|
-| 단위 테스트 | `src/*/tests.rs` | 755+ |
-| 통합 테스트 | `src/renderer/layout/integration_tests.rs` | 11 |
-| E2E 테스트 | `rhwp-studio/e2e/` | 12 시나리오 |
-
-### 테스트 실행
-
-```bash
-cargo test                           # 전체 테스트
-cargo test test_equation             # 특정 테스트
-cargo test -- --nocapture            # 출력 포함
-
-# E2E 테스트
-cd rhwp-studio
-node e2e/text-flow.test.mjs --mode=headless
-```
-
-### 코드 품질 대시보드
-
-```bash
-./scripts/metrics.sh                 # 메트릭 수집 + 대시보드 생성
-# → output/dashboard.html
-```
-
-## HWP Spec Notes
-
-- HWP 5.0 스펙 문서에 **알려진 오류**가 있습니다 — [hwp_spec_errata.md](mydocs/tech/hwp_spec_errata.md) 참조
-- 새 바이너리 구조 구현 시 **반드시 실제 바이너리 데이터와 교차 검증**하세요
-- 자체 정리 문서: [표 렌더링 가이드](mydocs/tech/hwp_table_rendering.md), [수식 지원 현황](mydocs/tech/equation_support_status.md)
+본 제품은 한글과컴퓨터의 한글 문서 파일(.hwp) 공개 문서를 참고하여 개발하였습니다.
 
 ## License
 
-이 프로젝트는 [MIT License](LICENSE)로 배포됩니다.
+이 프로젝트는 [MIT License](LICENSE)로 배포됩니다. 기여하신 코드도 동일한 라이선스가 적용됩니다.
