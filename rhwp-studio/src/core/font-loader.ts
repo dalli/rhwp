@@ -127,8 +127,9 @@ const OS_FONT_CANDIDATES = [
 const detectedOSFonts = new Set<string>();
 
 /** OS 폰트 감지 실행 (@font-face 등록 전에 호출) */
-function detectOSFonts(): void {
-  for (const name of OS_FONT_CANDIDATES) {
+function detectOSFonts(docFonts?: string[]): void {
+  const candidates = new Set([...OS_FONT_CANDIDATES, ...(docFonts || [])]);
+  for (const name of candidates) {
     try {
       if (document.fonts.check(`16px "${name}"`)) {
         detectedOSFonts.add(name);
@@ -159,7 +160,7 @@ export async function loadWebFonts(
 ): Promise<void> {
   // 0) OS 폰트 감지 (@font-face 등록 전에 실행해야 정확)
   if (!fontFaceRegistered) {
-    detectOSFonts();
+    detectOSFonts(docFonts);
   }
 
   // 1) CSS @font-face 규칙 전체 등록 (네트워크 미발생, 최초 1회만)

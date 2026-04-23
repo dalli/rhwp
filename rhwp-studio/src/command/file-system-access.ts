@@ -1,3 +1,6 @@
+import { open, save } from '@tauri-apps/plugin-dialog';
+import { readFile, writeFile } from '@tauri-apps/plugin-fs';
+
 export interface FileSystemWritableFileStreamLike {
   write(data: Blob): Promise<void>;
   close(): Promise<void>;
@@ -49,6 +52,36 @@ function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
 }
 
+function isTauri(): boolean {
+  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+}
+
+class TauriFileHandle implements FileSystemFileHandleLike {
+  kind: 'file' = 'file';
+  name: string;
+  path: string;
+
+  constructor(path: string) {
+    this.path = path;
+    this.name = path.split(/[/\\]/).pop() || 'document.hwp';
+  }
+
+  async getFile(): Promise<File> {
+    const bytes = await readFile(this.path);
+    return new File([bytes], this.name, { type: 'application/x-hwp' });
+  }
+
+  async createWritable(): Promise<FileSystemWritableFileStreamLike> {
+    return {
+      write: async (data: Blob) => {
+        const bytes = new Uint8Array(await data.arrayBuffer());
+        await writeFile(this.path, bytes);
+      },
+      close: async () => {},
+    };
+  }
+}
+
 async function writeBlobToHandle(handle: FileSystemFileHandleLike, blob: Blob): Promise<void> {
   const writable = await handle.createWritable();
   await writable.write(blob);
@@ -56,6 +89,15 @@ async function writeBlobToHandle(handle: FileSystemFileHandleLike, blob: Blob): 
 }
 
 export async function pickOpenFileHandle(windowLike: FileSystemWindowLike): Promise<FileSystemFileHandleLike | null> {
+  if (isTauri()) {
+    const selected = await open({
+      multiple: false,
+      filters: [{ name: 'HWP 문서', extensions: ['hwp', 'hwpx'] }]
+    });
+    if (!selected) return null;
+    return new TauriFileHandle(selected as string);
+  }
+
   if (!windowLike.showOpenFilePicker) return null;
 
   try {
@@ -88,6 +130,23 @@ export async function saveDocumentToFileSystem(options: SaveDocumentOptions): Pr
       method: 'current-handle',
       handle: currentHandle,
       fileName: currentHandle.name,
+    };
+  }
+
+  if (isTauri()) {
+    const savePath = await save({
+      defaultPath: suggestedName,
+      filters: [{ name: 'HWP 문서', extensions: ['hwp', 'hwpx'] }]
+    });
+    if (!savePath) {
+      throw new DOMException('User cancelled', 'AbortError');
+    }
+    const handle = new TauriFileHandle(savePath);
+    await writeBlobToHandle(handle, blob);
+    return {
+      method: 'save-picker',
+      handle,
+      fileName: handle.name,
     };
   }
 

@@ -26,6 +26,11 @@ import { TableObjectRenderer } from '@/engine/table-object-renderer';
 import { TableResizeRenderer } from '@/engine/table-resize-renderer';
 import { Ruler } from '@/view/ruler';
 
+// Check if we are running in Tauri context
+function isTauri(): boolean {
+  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+}
+
 const wasm = new WasmBridge();
 const eventBus = new EventBus();
 
@@ -182,14 +187,41 @@ async function initialize(): Promise<void> {
     setupGlobalShortcuts();
     loadFromUrlParam();
 
-    // E2E 테스트용 전역 노출 (개발 모드 전용)
     if (import.meta.env.DEV) {
       (window as any).__inputHandler = inputHandler;
       (window as any).__canvasView = canvasView;
     }
+
+    if (isTauri()) {
+      checkAppUpdates();
+    }
   } catch (error) {
     msg.textContent = `WASM 초기화 실패: ${error}`;
     console.error('[main] WASM 초기화 실패:', error);
+  }
+}
+
+async function checkAppUpdates() {
+  try {
+    const { check } = await import('@tauri-apps/plugin-updater');
+    const { ask } = await import('@tauri-apps/plugin-dialog');
+    const update = await check();
+    if (update?.available) {
+      const yes = await ask(`새로운 버전 ${update.version} 이 출시되었습니다.\n\n릴리즈 노트:\n${update.body}\n\n지금 업데이트하시겠습니까?`, {
+        title: '소프트웨어 업데이트',
+        kind: 'info',
+        okLabel: '업데이트',
+        cancelLabel: '나중에',
+      });
+      if (yes) {
+        sbMessage().textContent = '업데이트 다운로드 및 설치 중... 앱이 곧 재시작됩니다.';
+        await update.downloadAndInstall();
+        const { relaunch } = await import('@tauri-apps/plugin-process');
+        await relaunch();
+      }
+    }
+  } catch (e) {
+    console.warn('[Updater] 업데이트 확인 실패:', e);
   }
 }
 
